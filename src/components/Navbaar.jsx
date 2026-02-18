@@ -40,7 +40,7 @@ const Navbaar = () => {
                     <hr className='border-none outline-none h-0.5 bg-blue-900 w-3/5 m-auto hidden' />
                 </NavLink>
 
-                <li><a href="http://localhost:5176" target="_blank" className='py-1 hover:-translate-y-1 transition-all duration-500 hover:bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl px-3 block'>ADMIN LOGIN</a></li>
+                <li><a href="https://ak-hospitality-admin.vercel.app/" target="_blank" className='py-1 hover:-translate-y-1 transition-all duration-500 hover:bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl px-3 block'>ADMIN LOGIN</a></li>
             </ul>
             <div className='flex items-center gap-4 '>
                 {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -13,59 +13,111 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
 
-  // ✅ UX
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // ✅ normalize email
+  const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+
+  const resetFields = () => {
+    setPassword("");
+    // optional: signup->login switch pe name clear
+    if (state !== "Sign Up") setName("");
+  };
+
+  const validate = () => {
+    if (!backendUrl) {
+      toast.error("Backend URL missing. Check VITE_BACKEND_URL in .env");
+      return false;
+    }
+
+    if (state === "Sign Up") {
+      if (!name.trim()) {
+        toast.error("Name is required");
+        return false;
+      }
+    }
+
+    if (!normalizedEmail) {
+      toast.error("Email is required");
+      return false;
+    }
+
+    if (!password) {
+      toast.error("Password is required");
+      return false;
+    }
+
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return false;
+    }
+
+    return true;
+  };
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
     if (isLoading) return;
 
+    if (!validate()) return;
+
     try {
       setIsLoading(true);
 
-      if (state === "Sign Up") {
-        const { data } = await axios.post(backendUrl + "/api/user/register", {
-          name,
-          password,
-          email,
-        });
+      const endpoint =
+        state === "Sign Up" ? "/api/user/register" : "/api/user/login";
 
-        if (data.success) {
-          localStorage.setItem("token", data.token);
-          setToken(data.token);
-          toast.success("Account created successfully!");
-        } else {
-          toast.error(data.message);
-        }
-      } else {
-        const { data } = await axios.post(backendUrl + "/api/user/login", {
-          password,
-          email,
-        });
+      const payload =
+        state === "Sign Up"
+          ? { name: name.trim(), email: normalizedEmail, password }
+          : { email: normalizedEmail, password };
 
-        if (data.success) {
-          localStorage.setItem("token", data.token);
-          setToken(data.token);
-          toast.success("Logged in successfully!");
-        } else {
-          toast.error(data.message);
-        }
+      const { data } = await axios.post(`${backendUrl}${endpoint}`, payload, {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: false,
+        timeout: 15000,
+      });
+
+      if (!data?.success) {
+        toast.error(data?.message || "Something went wrong");
+        return;
       }
+
+      if (!data?.token) {
+        toast.error("Token missing from server response");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      setToken(data.token);
+
+      toast.success(state === "Sign Up" ? "Account created!" : "Logged in!");
+
+      // ✅ redirect (change route if needed)
+      navigate("/dashboard");
     } catch (error) {
-      toast.error(error?.response?.data?.message || error.message);
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Request failed. Try again.";
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ✅ If already logged in, redirect out of login page
   useEffect(() => {
-    if (token) navigate("/");
+    if (token) {
+      navigate("/dashboard");
+    }
   }, [token, navigate]);
 
-  // ✅ reset fields when toggling
+  // ✅ reset on mode change
   useEffect(() => {
-    setPassword("");
+    resetFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
@@ -81,9 +133,13 @@ const Login = () => {
               {state === "Sign Up" ? "Create Account" : "Welcome Back"}
             </h1>
             <p className="text-gray-600 mt-1 text-sm sm:text-base">
-              Please {state === "Sign Up" ? "sign up" : "log in"} to book an
-              appointment.
+              Please {state === "Sign Up" ? "sign up" : "log in"} to continue.
             </p>
+            {!backendUrl && (
+              <p className="mt-2 text-xs text-red-600">
+                Missing backend URL. Set <b>VITE_BACKEND_URL</b> in <b>.env</b>.
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -131,10 +187,12 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
-                  autoComplete={state === "Sign Up" ? "new-password" : "current-password"}
+                  minLength={8}
+                  autoComplete={
+                    state === "Sign Up" ? "new-password" : "current-password"
+                  }
                 />
 
-                {/* Show/Hide */}
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
@@ -145,19 +203,17 @@ const Login = () => {
                 </button>
               </div>
 
-              {state === "Sign Up" && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Password should be at least 8 characters.
-                </p>
-              )}
+              <p className="text-xs text-gray-500 mt-1">
+                Minimum 8 characters.
+              </p>
             </div>
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !backendUrl}
               className={`w-full rounded-lg py-2.5 text-sm sm:text-base font-medium text-white shadow-md transition-all
                 ${
-                  isLoading
+                  isLoading || !backendUrl
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                 }`}
@@ -171,7 +227,6 @@ const Login = () => {
                 : "Login"}
             </button>
 
-            {/* Switch */}
             {state === "Sign Up" ? (
               <p className="text-center text-sm text-gray-600">
                 Already have an account?{" "}
@@ -198,7 +253,6 @@ const Login = () => {
           </div>
         </form>
 
-        {/* Footer note */}
         <p className="text-center text-xs text-gray-500 mt-4">
           By continuing, you agree to our Terms & Privacy Policy.
         </p>
