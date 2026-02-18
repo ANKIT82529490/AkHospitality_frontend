@@ -81,7 +81,7 @@ const Navbaar = () => {
                         <NavLink onClick={() => setShowMenu(false)} to='/context'><p className='px-4 py-2 rounded-lg hover:bg-gradient-to-r from-blue-100 to-purple-100 transition-all duration-300'>CONTACT</p></NavLink>
                         <li>
                             <a
-                                href={import.meta.env.VITE_ADMIN_URL}
+                                href={"https://ak-hospitality-admin.vercel.app/" ||import.meta.env.VITE_ADMIN_URL || "http://localhost:5174"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className='py-1 hover:-translate-y-1 transition-all duration-500 hover:bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl px-3 block'
